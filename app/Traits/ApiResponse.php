@@ -2,7 +2,9 @@
 
 namespace App\Traits;
 
+use Illuminate\Encryption\Encrypter;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Crypt;
 use Symfony\Component\HttpFoundation\Response;
 
 trait ApiResponse
@@ -25,6 +27,15 @@ trait ApiResponse
     protected function jsonUnauthorized(string $message, array $headers = []): JsonResponse
     {
         return $this->jsonSend(false, $message, null, headers: $headers);
+    }
+
+    protected function encryptToken(string $value, string $key = null, string $cipher = null): string
+    {
+        if (! $key) {
+            return Crypt::encryptString($value);
+        } else {
+            return (new Encrypter($key, $cipher ?: config('app.cipher')))->encryptString($value);
+        }
     }
 
     private function jsonSend(bool $status = true, string $message = null, array $data = null, int $http_status = Response::HTTP_OK, array $headers = [], string $redirect_to = null): JsonResponse

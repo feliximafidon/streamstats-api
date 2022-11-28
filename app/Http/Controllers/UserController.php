@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Stream;
 use App\Models\User;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -9,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 use Laravel\Socialite\Facades\Socialite;
 
 class UserController extends Controller
@@ -33,7 +35,7 @@ class UserController extends Controller
      * @param string $driver 
      * @return \Illuminate\Http\JsonResponse
      */
-    public function loginCallback(string $driver): JsonResponse
+    public function loginCallback(string $driver): RedirectResponse
     {
         // Only Twitch driver is implemented
 
@@ -71,11 +73,12 @@ class UserController extends Controller
                 throw new \Exception('Could not log in the user. Try again later.');
             }
 
-            $token = $tokenData->plainTextToken;
+            $nonce = bin2hex(random_bytes(8));
+            $token = $this->encryptToken($tokenData->plainTextToken, config('app.client_key') . $nonce, config('app.cipher'));
 
-            return $this->jsonSuccess(['token' => $token]);
+            return redirect(config('app.client_url') . "/auth/callback/{$driver}?token={$token}&nonce={$nonce}");
         } catch (\Exception $e) {
-            return $this->jsonError('There was an error completing your login. Please try again later.');
+            return redirect(config('app.client_url') . "/auth/login/{$driver}?error=" . urlencode('There was an error completing your login. Please try again later. E: ' . $e->getMessage()));
         }
     }
 
@@ -87,6 +90,7 @@ class UserController extends Controller
     public function stats()
     {
         $user = Auth::guard('web')->user();
+        return (new Stream)->getStreamsFromTwitch();
 
         $streams = Cache::get('computedStats');
     }

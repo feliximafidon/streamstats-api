@@ -15,7 +15,7 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->after('id', function(Blueprint $table) {
-                $table->bigInteger('twitch_id')->unique();
+                $table->unsignedBigInteger('twitch_id')->unique();
                 $table->string('username', 80)->unique();
             });
 
