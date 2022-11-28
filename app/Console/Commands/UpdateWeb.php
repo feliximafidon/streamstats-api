@@ -31,7 +31,7 @@ class UpdateWeb extends Command
     {
         if (config('app.env') === 'local' && is_dir($source = base_path('../twitch-web/build')) && is_file($source . '/index.html')) {
             try {
-                $this->copy_directory($source, $destination = base_path('public'));
+                $this->copyDirectory($source, $destination = base_path('public'));
                 copy($destination . '/index.html', base_path('resources/views/welcome.blade.php'));
                 unlink($destination . '/index.html');
 
@@ -51,7 +51,7 @@ class UpdateWeb extends Command
         return Command::SUCCESS;
     }
 
-    private function copy_directory($source, $destination): bool
+    private function copyDirectory($source, $destination): bool
     {
         $dir = opendir($source); 
     
@@ -62,8 +62,8 @@ class UpdateWeb extends Command
         foreach (scandir($source) as $file) { 
     
             if (( $file != '.' ) && ( $file != '..' )) { 
-                if ( is_dir($source . '/' . $file) ) {
-                    if (! $this->copy_directory($source . '/' . $file, $destination . '/' . $file)) {
+                if (is_dir($source . '/' . $file)) {
+                    if (! $this->copyDirectory($source . '/' . $file, $destination . '/' . $file)) {
                         throw new \Exception("Copy of '{$source}/{$file}' to {$destination}/{$file} failed.");
                     }
                 } else { 

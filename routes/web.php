@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Socialite\Facades\Socialite;
 
@@ -18,16 +19,8 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/auth/login/twitch', function() {
-    return Socialite::driver('twitch')->scopes(['user:read:email', 'user:read:follows', 'channel:read:subscriptions'])->redirect();
-});
+Route::get('/auth/login/{twitch}', [UserController::class, 'loginInitiate'])->where('driver', ['twitch']);
 
-Route::get('/auth/callback/{driver}', function() {
-    $user = Socialite::driver('twitch')->user();
+Route::get('/auth/callback/{driver}', [UserController::class, 'loginCallback'])->whereIn('driver', ['twitch']);
 
-    dd($user);
-})->where('driver', ['twitch']);
-
-Route::get('/{any}', function() {
-    return redirect('/');
-})->where('any', '.*');
+Route::get('/{any}', [UserController::class, 'lost'])->where('any', '.*');
