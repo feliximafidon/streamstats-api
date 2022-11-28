@@ -55,6 +55,8 @@ return [
     */
 
     'url' => env('APP_URL', 'http://localhost'),
+    
+    'client_url' => env('APP_CLIENT_URL', 'http://localhost:3000'),
 
     'asset_url' => env('ASSET_URL'),
 
@@ -122,6 +124,8 @@ return [
     */
 
     'key' => env('APP_KEY'),
+
+    'client_key' => env('APP_CLIENT_KEY'),
 
     'cipher' => 'AES-256-CBC',
 
@@ -194,6 +198,8 @@ return [
         // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
+
+        \SocialiteProviders\Manager\ServiceProvider::class,
 
     ],
 
