@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use romanzipp\Twitch\Twitch;
 
 class Stream extends Model
@@ -16,12 +17,15 @@ class Stream extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'twitch_id',
-        'username',
-        'avatar',
+        'id',
+        'user_id',
+        'user_name',
+        'game_id',
+        'game_name',
+        'type',
+        'title',
+        'viewer_count',
+        'thumbnail_url',
     ];
     
     /**
@@ -29,11 +33,11 @@ class Stream extends Model
      * 
      * @var \romanzipp\Twitch\Twitch
      */
-    protected $twitch = null;
+    protected static $twitch = null;
 
-    public function getStreamsFromTwitch() 
+    public static function getStreamsFromTwitch(): array
     {
-        $this->_initializeTwitch();
+        self::_initializeTwitch();
 
         /**
          * Issue: 
@@ -51,25 +55,48 @@ class Stream extends Model
          */
 
         $streams = collect([]);
-
-        $streamsCursor = $this->twitch->getStreams([
-            'type' => 'live',
-            'first' => 100,
-        ]);
-
-        // return $streamsCursor->data();
+        $fetchedStreams = null;
 
         for ($i = 0; $i < 10; $i++) {
-            $streams = $streams->merge($streamsCursor->data());
+            $parameters = [
+                'type' => 'live',
+                'first' => 100,
+            ];
 
-            if (! $streamsCursor->hasMoreResults()) {
-                break;
+            if ($fetchedStreams) {
+                // We have fetched records before, so we set pagination
+                $cursor = $fetchedStreams->getPaginator()?->cursor();
+
+                if ($cursor) {
+                    $parameters['after'] = $cursor;
+                } else {
+                    /**
+                     * The Pagination object is empty if there are no more pages to return in the direction you’re paging.
+                     * Ref: https://dev.twitch.tv/docs/api/guide#pagination
+                     */
+                    break;
+                }
             }
 
-            $streamsCursor->next();
+            $fetchedStreams = self::$twitch->getStreams($parameters);
+            
+            $streams = $streams->merge($fetchedStreams->data());
         }
 
-        return $streams;
+        return DB::transaction(function () use ($streams) {
+            $self = new static();
+
+            self::query()->update(['is_archived' => true]);
+            $data = $streams->unique('id')->map(function ($stream) use ($self) {
+                return collect($stream)->only($self->getFillable());
+            })->toArray();
+
+            shuffle($data);
+            
+            Stream::insert($data);
+
+            return $data;
+        });
     }
     
     /**
@@ -77,10 +104,10 @@ class Stream extends Model
      * 
      * @return void
      */
-    private function _initializeTwitch()
+    private static function _initializeTwitch()
     {
-        $this->twitch = new Twitch;
+        self::$twitch = new Twitch;
 
-        $this->twitch->setClientId(config('twitch-api.client_id'));
+        self::$twitch->setClientId(config('twitch-api.client_id'));
     }
 }

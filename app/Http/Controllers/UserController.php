@@ -90,7 +90,7 @@ class UserController extends Controller
     public function stats()
     {
         $user = Auth::guard('web')->user();
-        return (new Stream)->getStreamsFromTwitch();
+        return Stream::getStreamsFromTwitch();
 
         $streams = Cache::get('computedStats');
     }
