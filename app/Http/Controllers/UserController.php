@@ -3,14 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Stream;
+use App\Models\StreamTag;
 use App\Models\User;
 use App\Traits\ApiResponse;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Crypt;
 use Laravel\Socialite\Facades\Socialite;
 
 class UserController extends Controller
@@ -26,7 +25,11 @@ class UserController extends Controller
     {
         // Only Twitch driver is implemented
 
-        return Socialite::driver('twitch')->scopes(['user:read:email', 'user:read:follows', 'channel:read:subscriptions'])->redirect();
+        return Socialite::driver('twitch')->scopes([
+            'user:read:email', 
+            'user:read:follows', 
+            'channel:read:subscriptions',
+        ])->redirect();
     }
 
     /**
@@ -73,6 +76,9 @@ class UserController extends Controller
                 throw new \Exception('Could not log in the user. Try again later.');
             }
 
+            // Save token to cache, but token should expire about same time as the user token
+            Cache::put('user.accessToken.' . $user->twitch_id, $twitchUser->accessTokenResponseBody['access_token'], now()->addMinutes(config('auth.passwords.users.expire'))); 
+
             $nonce = bin2hex(random_bytes(8));
             $token = $this->encryptToken($tokenData->plainTextToken, config('app.client_key') . $nonce, config('app.cipher'));
 
@@ -89,8 +95,18 @@ class UserController extends Controller
      */
     public function stats()
     {
-        $user = Auth::guard('web')->user();
-        return Stream::getStreamsFromTwitch();
+        $user = Auth::user();
+        $twitchAccessToken = Cache::get('user.accessToken.' . $user->twitch_id);
+
+        if (! $twitchAccessToken) {
+            return $this->jsonUnauthorized('Please login again.');
+        }
+
+        StreamTag::getUnavailableTagsInformation(['39ee8140-901a-4762-bfca-8260dea1310f', '6ea6bca4-4712-4ab9-a906-e3336a9d8039', 'd4bb9c58-2141-4881-bcdc-3fe0505457d1']);
+        dd('yes');
+
+        $data = Stream::getUserStreams($twitchAccessToken);
+        return $data;
 
         $streams = Cache::get('computedStats');
     }
