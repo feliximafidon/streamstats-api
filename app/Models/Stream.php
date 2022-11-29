@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +27,10 @@ class Stream extends Model
         'title',
         'viewer_count',
         'thumbnail_url',
+        'tag_ids',
+        // 'tag_ids->id',
+        // 'tag_ids->name',
+        // 'tag_ids->description',
     ];
     
     /**
@@ -35,6 +40,11 @@ class Stream extends Model
      */
     protected static $twitch = null;
 
+    /**
+     * Fetch top 1000 live streams from Twitch
+     * 
+     * @return array
+     */
     public static function getStreamsFromTwitch(): array
     {
         self::_initializeTwitch();
@@ -79,24 +89,47 @@ class Stream extends Model
             }
 
             $fetchedStreams = self::$twitch->getStreams($parameters);
-            
             $streams = $streams->merge($fetchedStreams->data());
         }
 
         return DB::transaction(function () use ($streams) {
+            $tagIds = [];
             $self = new static();
 
             self::query()->update(['is_archived' => true]);
-            $data = $streams->unique('id')->map(function ($stream) use ($self) {
+            $data = $streams->unique('id')->map(function ($stream) use ($self, &$tagIds) {
+                collect($stream->tag_ids)->each(function ($tagId) use ($tagIds) {
+                    $tagIds[$tagId] = [ // Using the key is a hack to keep the array unique
+                        'id' => $tagId,
+                    ];
+                });
+
+                // Json column cast fails for bulk inserts. Encode manually.
+                $stream->tag_ids = json_encode($stream->tag_ids);
+
                 return collect($stream)->only($self->getFillable());
             })->toArray();
 
             shuffle($data);
             
-            Stream::insert($data);
+            self::insert($data);
+
+            // Update stream tag information, for missing tagIds
+            StreamTag::getUnavailableTagsInformation(array_keys($tagIds));
 
             return $data;
         });
+    }
+
+    /**
+     * Get user stream data
+     * 
+     * @param string $userAccessToken
+     * @return array
+     */
+    public static function getUserStreams(string $userAccessToken): array
+    {
+        return [];
     }
     
     /**
@@ -110,4 +143,13 @@ class Stream extends Model
 
         self::$twitch->setClientId(config('twitch-api.client_id'));
     }
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'tag_ids' => 'array',
+    ];
 }

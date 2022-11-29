@@ -102,7 +102,9 @@ class UserController extends Controller
             return $this->jsonUnauthorized('Please login again.');
         }
 
-        StreamTag::getUnavailableTagsInformation(['39ee8140-901a-4762-bfca-8260dea1310f', '6ea6bca4-4712-4ab9-a906-e3336a9d8039', 'd4bb9c58-2141-4881-bcdc-3fe0505457d1']);
+        //Stream::getStreamsFromTwitch();
+        //StreamTag::getTagsInformation();
+        //StreamTag::getUnavailableTagsInformation(['39ee8140-901a-4762-bfca-8260dea1310f', '6ea6bca4-4712-4ab9-a906-e3336a9d8039', 'd4bb9c58-2141-4881-bcdc-3fe0505457d1']);
         dd('yes');
 
         $data = Stream::getUserStreams($twitchAccessToken);
