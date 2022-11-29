@@ -19,7 +19,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/auth/login/{twitch}', [UserController::class, 'loginInitiate'])->whereIn('driver', ['twitch']);
+Route::get('/auth/login/{driver}', [UserController::class, 'loginInitiate'])->whereIn('driver', ['twitch']);
 
 Route::get('/auth/callback/{driver}', [UserController::class, 'loginCallback'])->whereIn('driver', ['twitch']);
 

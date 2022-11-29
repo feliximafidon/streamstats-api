@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\ModelBase;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
@@ -10,6 +11,7 @@ use romanzipp\Twitch\Twitch;
 class StreamTag extends Model
 {
     use HasFactory;
+    use ModelBase;
 
     /**
      * The attributes that are mass assignable.
@@ -28,13 +30,6 @@ class StreamTag extends Model
      * @var string
      */
     protected $twitchCacheKey = 'twitch.tags';
-
-    /**
-     * The Twitch object
-     * 
-     * @var \romanzipp\Twitch\Twitch
-     */
-    protected static $twitch = null;
 
     /**
      * Fetch information for tags, updating any changes
@@ -117,19 +112,41 @@ class StreamTag extends Model
             } while ($fetchedTags->hasMoreResults());
         }
 
-        StreamTag::upsert($tags, ['id']);
+        self::upsert($tags, ['id']);
+
+        // Refresh Twitch cache
+        self::refreshTwitchCache();
+    }    
+
+    /**
+     * Scope query to define default fetch configuration
+     * 
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeData($query)
+    {
+        return $query->select(['id', 'name', 'description']);
     }
 
     /**
-     * Initialise the Twitch object
+     * Get Twitch cache key
+     * 
+     * @return string
+     */
+    public static function getTwitchCacheKey(): string
+    {
+        return (new static)->twitchCacheKey;
+    }
+
+    /**
+     * Refresh Twitch Cache
      * 
      * @return void
      */
-    private static function _initializeTwitch()
+    public static function refreshTwitchCache()
     {
-        self::$twitch = new Twitch;
-
-        self::$twitch->setClientId(config('twitch-api.client_id'));
+        Cache::put(self::getTwitchCacheKey(), static::data()->get()->keyBy('id'));
     }
 
     /**

@@ -66,25 +66,23 @@ class UserController extends Controller
                 $user->save();
             }
 
-            $token = Auth::loginUsingId($user->id);
+            // Save token to cache, but token should expire about same time as the user token
+            Cache::put('user.accessToken.' . $user->twitch_id, $twitchUser->accessTokenResponseBody['access_token'], now()->addMinutes(config('auth.passwords.users.expire'))); 
 
             if (
-                ! Auth::guard('web')->loginUsingId($user->id) 
+                ! ($token = Auth::guard('web')->loginUsingId($user->id)) 
                 || !($authUser = Auth::guard('web')->user()) 
                 || ! ($tokenData = $authUser->createToken(config('app.name')))
             ) {
                 throw new \Exception('Could not log in the user. Try again later.');
             }
 
-            // Save token to cache, but token should expire about same time as the user token
-            Cache::put('user.accessToken.' . $user->twitch_id, $twitchUser->accessTokenResponseBody['access_token'], now()->addMinutes(config('auth.passwords.users.expire'))); 
-
             $nonce = bin2hex(random_bytes(8));
             $token = $this->encryptToken($tokenData->plainTextToken, config('app.client_key') . $nonce, config('app.cipher'));
 
             return redirect(config('app.client_url') . "/auth/callback/{$driver}?token={$token}&nonce={$nonce}");
         } catch (\Exception $e) {
-            return redirect(config('app.client_url') . "/auth/login/{$driver}?error=" . urlencode('There was an error completing your login. Please try again later. E: ' . $e->getMessage()));
+            return redirect(config('app.client_url') . "/auth/login?error=" . urlencode('There was an error completing your login. Please try again later. E: ' . $e->getMessage()));
         }
     }
 
@@ -102,15 +100,19 @@ class UserController extends Controller
             return $this->jsonUnauthorized('Please login again.');
         }
 
-        //Stream::getStreamsFromTwitch();
-        //StreamTag::getTagsInformation();
-        //StreamTag::getUnavailableTagsInformation(['39ee8140-901a-4762-bfca-8260dea1310f', '6ea6bca4-4712-4ab9-a906-e3336a9d8039', 'd4bb9c58-2141-4881-bcdc-3fe0505457d1']);
-        dd('yes');
+        $tags = Cache::get(StreamTag::getTwitchCacheKey(), StreamTag::data()->get()->keyBy('id'));
+        $meta = [
+            'games' => Stream::select(['game_id', 'game_name'])->pluck('game_name', 'game_id'),
+            'tags' => $tags,
+            'stream_count' => Stream::data()->count(),
+        ];
+        $aggregates = $user->getTwitchStats();
 
-        $data = Stream::getUserStreams($twitchAccessToken);
-        return $data;
-
-        $streams = Cache::get('computedStats');
+        return $this->jsonSuccess([
+            'aggregates' => $aggregates,
+            'meta' => $meta,
+            'user' => $user,
+        ]);
     }
 
     public function lost(Request $request) 

@@ -22,7 +22,7 @@ class StreamTagObserver
      */
     public function created(StreamTag $streamTag)
     {
-        $this->_resetTwitchCache();
+        $this->_resetTwitchCache($streamTag);
     }
 
     /**
@@ -33,7 +33,7 @@ class StreamTagObserver
      */
     public function updated(StreamTag $streamTag)
     {
-        $this->_resetTwitchCache();
+        $this->_resetTwitchCache($streamTag);
     }
 
     /**
@@ -44,7 +44,7 @@ class StreamTagObserver
      */
     public function deleted(StreamTag $streamTag)
     {
-        $this->_resetTwitchCache();
+        $this->_resetTwitchCache($streamTag);
     }
 
     /**
@@ -55,7 +55,7 @@ class StreamTagObserver
      */
     public function restored(StreamTag $streamTag)
     {
-        $this->_resetTwitchCache();
+        $this->_resetTwitchCache($streamTag);
     }
 
     /**
@@ -66,16 +66,17 @@ class StreamTagObserver
      */
     public function forceDeleted(StreamTag $streamTag)
     {
-        $this->_resetTwitchCache();
+        $this->_resetTwitchCache($streamTag);
     }
 
     /**
      * Forget the cache
      * 
-     * @return void
+     * @param  \App\Models\StreamTag  $streamTag
+     * @return void 
      */
-    private function _resetTwitchCache()
+    private function _resetTwitchCache(StreamTag $streamTag)
     {
-        Cache::put(StreamTag::select(['id', 'name', 'description'])->limit(2)->get()->keyBy('id'));
+        StreamTag::refreshTwitchCache();
     }
 }
