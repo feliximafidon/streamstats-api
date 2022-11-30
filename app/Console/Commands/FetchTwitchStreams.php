@@ -5,16 +5,15 @@ namespace App\Console\Commands;
 use App\Models\Stream;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
-use romanzipp\Twitch\Twitch;
 
-class FetchTwitchData extends Command
+class FetchTwitchStreams extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'if:fetch-twitch-data';
+    protected $signature = 'if:fetch-twitch-streams';
 
     /**
      * The console command description.
@@ -33,7 +32,7 @@ class FetchTwitchData extends Command
         try{
             Stream::getStreamsFromTwitch();
         } catch (\Exception $e) {
-            Log::critical('Command - if:fetch-twitch-data failed. Error: ' . $e->getMessage());
+            Log::critical('Command - if:fetch-twitch-streams failed. Error: ' . $e->getMessage());
             $this->error('Error: ' . $e->getMessage());
 
             return Command::FAILURE;

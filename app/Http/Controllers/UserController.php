@@ -3,14 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Stream;
+use App\Models\StreamTag;
 use App\Models\User;
 use App\Traits\ApiResponse;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Crypt;
 use Laravel\Socialite\Facades\Socialite;
 
 class UserController extends Controller
@@ -26,7 +25,11 @@ class UserController extends Controller
     {
         // Only Twitch driver is implemented
 
-        return Socialite::driver('twitch')->scopes(['user:read:email', 'user:read:follows', 'channel:read:subscriptions'])->redirect();
+        return Socialite::driver('twitch')->scopes([
+            'user:read:email', 
+            'user:read:follows', 
+            'channel:read:subscriptions',
+        ])->redirect();
     }
 
     /**
@@ -63,10 +66,11 @@ class UserController extends Controller
                 $user->save();
             }
 
-            $token = Auth::loginUsingId($user->id);
+            // Save token to cache, but token should expire about same time as the user token
+            Cache::put('user.accessToken.' . $user->twitch_id, $twitchUser->accessTokenResponseBody['access_token'], now()->addMinutes(config('auth.passwords.users.expire'))); 
 
             if (
-                ! Auth::guard('web')->loginUsingId($user->id) 
+                ! ($token = Auth::guard('web')->loginUsingId($user->id)) 
                 || !($authUser = Auth::guard('web')->user()) 
                 || ! ($tokenData = $authUser->createToken(config('app.name')))
             ) {
@@ -78,7 +82,7 @@ class UserController extends Controller
 
             return redirect(config('app.client_url') . "/auth/callback/{$driver}?token={$token}&nonce={$nonce}");
         } catch (\Exception $e) {
-            return redirect(config('app.client_url') . "/auth/login/{$driver}?error=" . urlencode('There was an error completing your login. Please try again later. E: ' . $e->getMessage()));
+            return redirect(config('app.client_url') . "/auth/login?error=" . urlencode('There was an error completing your login. Please try again later. E: ' . $e->getMessage()));
         }
     }
 
@@ -89,10 +93,30 @@ class UserController extends Controller
      */
     public function stats()
     {
-        $user = Auth::guard('web')->user();
-        return Stream::getStreamsFromTwitch();
+        $user = Auth::user();
+        $twitchAccessToken = Cache::get('user.accessToken.' . $user->twitch_id);
 
-        $streams = Cache::get('computedStats');
+        if (! $twitchAccessToken) {
+            return $this->jsonUnauthorized('Please login again.');
+        }
+
+        $streams = 
+
+        $tags = Cache::get(StreamTag::getTwitchCacheKey(), StreamTag::data()->get()->keyBy('id'));
+        $meta = [
+            'games' => Stream::select(['game_id', 'game_name'])->pluck('game_name', 'game_id'),
+            'tags' => $tags,
+            'stream_count' => Stream::data()->count(),
+            'streams' => Cache::get(Stream::getTwitchCacheKey()),
+            'user_streams' => Cache::get(User::getTwitchCacheKey() . '.' . $user->twitch_id),
+        ];
+        $aggregates = $user->getTwitchStats();
+
+        return $this->jsonSuccess([
+            'aggregates' => $aggregates,
+            'meta' => $meta,
+            'user' => $user,
+        ]);
     }
 
     public function lost(Request $request) 

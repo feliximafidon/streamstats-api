@@ -2,6 +2,12 @@
 
 namespace App\Providers;
 
+use App\Listeners\SuccessfulLoginEventHandler;
+use App\Models\Stream;
+use App\Models\StreamTag;
+use App\Observers\StreamObserver;
+use App\Observers\StreamTagObserver;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -25,6 +31,10 @@ class EventServiceProvider extends ServiceProvider
             // ... other providers
             TwitchExtendSocialite::class.'@handle',
         ],
+
+        Login::class => [
+            SuccessfulLoginEventHandler::class,
+        ]
     ];
 
     /**
@@ -34,7 +44,8 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        StreamTag::observe(StreamTagObserver::class);
+        Stream::observe(StreamObserver::class);
     }
 
     /**

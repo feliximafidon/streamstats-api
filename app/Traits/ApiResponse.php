@@ -24,9 +24,9 @@ trait ApiResponse
         return $this->jsonSend(false, http_status: Response::HTTP_NOT_FOUND, redirect_to: $redirect_to);
     }
 
-    protected function jsonUnauthorized(string $message, array $headers = []): JsonResponse
+    protected function jsonUnauthorized(string $message, array $headers = [], string $redirect_to = null): JsonResponse
     {
-        return $this->jsonSend(false, $message, null, headers: $headers);
+        return $this->jsonSend(false, $message, null, headers: $headers, http_status: Response::HTTP_UNAUTHORIZED, redirect_to: $redirect_to);
     }
 
     protected function encryptToken(string $value, string $key = null, string $cipher = null): string
