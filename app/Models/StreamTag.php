@@ -20,6 +20,7 @@ class StreamTag extends Model
      */
     protected $fillable = [
         'id',
+        'is_auto',
         'name',
         'description',
     ];
@@ -56,6 +57,7 @@ class StreamTag extends Model
                 $tags[] = [
                     'id' => $tag->tag_id,
                     'name' => $tag->localization_names->{'en-us'},
+                    'is_auto' => $tag->is_auto,
                     'description' => $tag->localization_descriptions->{'en-us'},
                 ];
             }

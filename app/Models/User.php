@@ -115,12 +115,14 @@ class User extends Authenticatable
         $twitchAccessToken = Cache::get('user.accessToken.' . $user->twitch_id);
 
         $userStreams = self::getUserStreams($user->twitch_id, $twitchAccessToken);
+        $userStreamsIds = $userStreams->pluck('id')->toArray();
 
         // Cache result
         Cache::put(User::getTwitchCacheKey() . '.' . $user->twitch_id, $userStreams); // @TODO: Check --- Do we really need to do this, since we are using this one, after which we store the aggregated values?
 
         // Compute and cache user-dependent aggregates
         $streams = Cache::get(Stream::getTwitchCacheKey(), Stream::data()->get());
+        $streamsIds = $streams->pluck('id')->toArray();
 
         /**
          * User-specific aggregates
@@ -132,7 +134,10 @@ class User extends Authenticatable
         /**
          * Which of the top 1000 streams is the logged in user following
          */
-        $top_streams_following = Stream::whereJsonContains(
+        $top_streams_following = $streams->whereIn('id', array_intersect($userStreamsIds, $streamsIds))->values();
+
+        // Unused
+        $tags_intersect = Stream::data()->whereJsonContains(
             'tag_ids', 
             $userStreams->count() ? 
                 $userStreams->pluck('tag_ids')->reduce(
@@ -147,12 +152,12 @@ class User extends Authenticatable
          * 
          * Note: Added one to the result because it has to push the last off the top 1000 to join the top 1000
          */ 
-        $lowest_following_diff_top_1000 = $userStreams->count() ? 
-            ($streams->sortBy('viewer_count')->first()?->viewer_count - $userStreams->sortByDesc('viewer_count')->first()?->viewer_count + 1) : 
+        $lowest_following_diff_top_1000 = -100; $userStreams->count() ? 
+            ($streams->sortBy('viewer_count')->first()?->viewer_count - $userStreams->sortBy('viewer_count')->first()?->viewer_count + 1) : 
             null;
         
         /**
-         * Which of the top 1000 streams is the logged in user following?
+         * Which tags are shared between the user followed streams and the top 1000 streams
          */
         $shared_tags = array_intersect(
             array_values(array_unique($userStreams->pluck('tag_ids')->reduce(function($carry, $item) { return array_merge($carry ?: [], $item); }) ?: [])),

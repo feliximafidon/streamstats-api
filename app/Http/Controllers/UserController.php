@@ -100,11 +100,15 @@ class UserController extends Controller
             return $this->jsonUnauthorized('Please login again.');
         }
 
+        $streams = 
+
         $tags = Cache::get(StreamTag::getTwitchCacheKey(), StreamTag::data()->get()->keyBy('id'));
         $meta = [
             'games' => Stream::select(['game_id', 'game_name'])->pluck('game_name', 'game_id'),
             'tags' => $tags,
             'stream_count' => Stream::data()->count(),
+            'streams' => Cache::get(Stream::getTwitchCacheKey()),
+            'user_streams' => Cache::get(User::getTwitchCacheKey() . '.' . $user->twitch_id),
         ];
         $aggregates = $user->getTwitchStats();
 
