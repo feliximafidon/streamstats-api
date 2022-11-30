@@ -15,7 +15,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+        $schedule->command('if:fetch-twitch-streams')->everyFifteenMinutes()->withoutOverlapping();
+        $schedule->command('if:fetch-twitch-tags')->daily()->withoutOverlapping();
     }
 
     /**

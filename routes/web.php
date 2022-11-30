@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
+use Laravel\Socialite\Facades\Socialite;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,3 +18,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('/auth/login/{driver}', [UserController::class, 'loginInitiate'])->whereIn('driver', ['twitch']);
+
+Route::get('/auth/callback/{driver}', [UserController::class, 'loginCallback'])->whereIn('driver', ['twitch']);
+
+Route::get('/{any}', [UserController::class, 'lost'])->where('any', '.*');

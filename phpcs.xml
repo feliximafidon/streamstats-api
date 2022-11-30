@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ruleset name="Project Rules">
+    <file>./app/</file>
+    <arg value="sp"/>
+
+    <!-- <rule ref="vendor/flyeralarm/php-code-validator/ruleset.xml"/> -->
+	<rule ref="PSR12"/>
+    
+    <!-- custom rules -->
+    
+</ruleset>
